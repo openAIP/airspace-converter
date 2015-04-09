@@ -1,2 +1,2 @@
 # data-converter
-Toolset to convert to several formats.
+Toolset of PHP scripts to convert to several formats.
