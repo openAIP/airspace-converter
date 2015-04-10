@@ -4,6 +4,7 @@
  * @file  openAIP Airspace converter
  *
  */
+include "tools.php";
 include 'open_aip_airspace.converter.airspace.inc';
 
 class AirspaceConverter
@@ -73,26 +74,13 @@ class AirspaceConverter
     $this->maxLon = 180.0;
     $this->minLon = -180.0;
 
-    // an openair string MUST contain a class to start the parser
-    // as this function is mainly used to
+    // an openair string must contain a class to start the parser
     if ( (!strncmp($this->srcFormat, "OPENAIR", 7)) && (strpos($this->srcString, "AC") === FALSE) )
     {
       $this->srcString = "AC X\n" . $this->srcString;
     }
 
     return $this->loadData();
-  }
-
-  function getFirstAirspaceWkt()
-  {
-    if (count($this->airspaces) > 0)
-    {
-      return $this->airspaces[0]->geometry->toWkt();
-    }
-    else
-    {
-      return "";
-    }
   }
 
   function arcRes($radius)
@@ -149,9 +137,9 @@ class AirspaceConverter
         if ($idx == ($np-1))
         {
           // if first point and last point are identical, close airway
-          if (   ($currentPath->pathElements[0]->lat == $point->lat)
-              && ($currentPath->pathElements[0]->lon == $point->lon)
-              )
+          if ( ($currentPath->pathElements[0]->lat == $point->lat) &&
+               ($currentPath->pathElements[0]->lon == $point->lon)
+             )
           {
             $point = $currentPath->pathElements[1];
             $brg = $startPoint->bearingTo($point);
@@ -167,29 +155,6 @@ class AirspaceConverter
 
             $airway->pathElements[0] = $leftPoint;
             $rightPath->pathElements[0] = $rightPoint;
-
-            /*
-            // try to find out which polygon is inner, which is outer..
-            // find center
-            $center = new AipPoint();
-            for ($idx = 0; $idx < $np; $idx++)
-            {
-              $center->lat += $currentPath->pathElements[$idx]->lat;
-              $center->lon += $currentPath->pathElements[$idx]->lon;
-            }
-            $center->lat /= $np;
-            $center->lon /= $np;
-
-            if ($center->distanceTo($leftPoint) < $center->distanceTo($rightPoint))
-            {
-              $asp->setInnerPath($airway);
-              $asp->setOuterPath($rightPath);
-            }
-            else
-            {
-              $asp->setInnerPath($rightPath);
-              $asp->setOuterPath($airway);
-            }*/
           }
           else
           {
@@ -356,10 +321,12 @@ class AirspaceConverter
 
       foreach ($lines as $line)
       {
+        // skip comments
         if (!strncmp($line, "*", 1))
         {
           continue;
         }
+        // skip StrePla Addon section
         else if (strpos($line, "STREPLA_ADDON BEGIN") !== FALSE)
         {
           $skip = TRUE;
@@ -374,7 +341,8 @@ class AirspaceConverter
           continue;
         }
 
-        // remove all unnecessary spaces
+        // remove all unnecessary spaces..
+        // maybe there is a better way to do this..
         $line = trim($line);
         $line = str_replace("  ", " ", $line);
         $line = str_replace("  ", " ", $line);
@@ -382,7 +350,7 @@ class AirspaceConverter
         $line = str_replace("  ", " ", $line);
         $line = str_replace(" ,", ",", $line);
 
-        // check if next asp has started..
+        // check if next asp has started
         $nextAsp = FALSE;
         if (!strncmp($line, "AC", 2))
         {
@@ -487,7 +455,7 @@ class AirspaceConverter
           }
           else if(!strcmp($stype, "W"))
           {
-            $asp->category = "WAVE";
+            $asp->category = "GLIDING";
           }
           else if(!strcmp($stype, "GP"))
           {
@@ -496,10 +464,6 @@ class AirspaceConverter
           else if(!strcmp($stype, "TMZ"))
           {
             $asp->category = "TMZ";
-          }
-          else if(!strcmp($stype, "G"))
-          {
-            $asp->category = "GLIDING";
           }
           else if(!strcmp($stype, "S"))
           {
@@ -541,13 +505,11 @@ class AirspaceConverter
           else if ((!strncmp($line, "AH", 2)) || (!strncmp($line, "AL", 2)))
           {
             $line = strtoupper($line);
-
             $limit = new AipVerticalLimit("XXX");
-
             $tInt = 0;
-
             $str = substr($line, 3);
 
+            // parse alt limit
             if (strpos($str, "FL") !== FALSE)
             {
 
@@ -891,7 +853,6 @@ class AirspaceConverter
 
   public function writeToFile($destPath, $outputFormat, $version)
   {
-    //return $this->startConversion($destPath, "OPENAIP", $version);
     // write result to file
     $outHandle = fopen($destPath, 'w');
     if ($outHandle)
@@ -924,7 +885,6 @@ class AirspaceConverter
         fwrite($outHandle, utf8_encode("*  POSSIBILITY OF SUCH DAMAGES.\n"));
         fwrite($outHandle, utf8_encode("*  **********************************************************************************************\n\n"));
 
-   
         foreach ($this->airspaces as $asp)
         {
           fwrite($outHandle, utf8_encode($asp->toOpenAir()));

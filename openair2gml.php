@@ -1,34 +1,57 @@
 <?php
 
-include "Tools.php";
 include "includes/open_aip_airspace.converter.aspc_converter.inc";
 
-if ($argc != 3) 
-{
-  echo "USAGE: php openair2gml.php <openair.txt> <out.gml>\n";
-  exit(0);
-}
+// recreate the output dir..
+rrmdir("./gml_out");
+mkdir("./gml_out");
 
 $aspConverter = new AirspaceConverter();
-if (!$aspConverter->loadFile($argv[1], "OPENAIR"))
-{ 
-  echo $aspConverter->warnings;
-  echo $aspConverter->errors;
-  echo "FAILED<BR>\n";
-  exit();
-}
+
+if ($handle = opendir('./openair_in')) {
+   
+  while (false !== ($file = readdir($handle))) 
+  {
+    if ($file != "." && $file != "..") 
+    {
+      if (substr ($file, 2, 1) != "_")
+      {
+        echo "Skip $file..<BR>\n";
+        continue;
+      }
       
-if ($aspConverter->writeToFile($argv[2], "GML", "23"))
-{
-  echo $aspConverter->warnings;
-  echo "OK\n";
+      echo "Processing $file..<BR>\n";
+        
+      if (!$aspConverter->loadFile("./openair_in/$file", "OPENAIR"))
+      {
+        echo $aspConverter->warnings;
+        echo $aspConverter->errors;
+        echo "FAILED<BR>\n";
+        continue;
+      }
+            
+      $inputCountryCode = strtolower(substr($file, 0, 2));
+      $aipFileName = "./gml_out/".$inputCountryCode."_asp.gml";
+      
+      if ($aspConverter->writeToFile($aipFileName, "GML", "23"))
+      {
+        echo $aspConverter->warnings;
+        echo "OK<BR>\n";
+      }
+      else
+      {
+        echo $aspConverter->warnings;
+        echo $aspConverter->errors;
+
+        echo "FAILED<BR>\n";
+      }    
+    }
+  }
+  
+  closedir($handle);
 }
-else
-{
-  echo $aspConverter->warnings;
-  echo $aspConverter->errors;
-  echo "FAILED\n";
-}    
+
+echo "Finished<BR>\n";
 
 ?>
 

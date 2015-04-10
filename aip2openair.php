@@ -1,6 +1,5 @@
 <?php
 
-include "Tools.php";
 include "includes/open_aip_airspace.converter.aspc_converter.inc";
 
 // recreate the output dir..
@@ -50,8 +49,6 @@ if ($handle = opendir('./aip_in')) {
   
   closedir($handle);
 }
-
-zipDir("./openair_out", "./asp_openair.zip");
 
 echo "Finished<BR>\n";
 

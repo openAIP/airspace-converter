@@ -1,0 +1,5 @@
+# ignore test output
+
+/aip_out/*
+/gml_out/*
+/openair_out/*

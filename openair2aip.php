@@ -1,15 +1,14 @@
 <?php
 
-include "Tools.php";
 include "includes/open_aip_airspace.converter.aspc_converter.inc";
 
 // recreate the output dir..
-rrmdir("./aip");
-mkdir("./aip");
+rrmdir("./aip_out");
+mkdir("./aip_out");
 
 $aspConverter = new AirspaceConverter();
 
-if ($handle = opendir('./openair')) {
+if ($handle = opendir('./openair_in')) {
    
   while (false !== ($file = readdir($handle))) 
   {
@@ -23,7 +22,7 @@ if ($handle = opendir('./openair')) {
       
       echo "Processing $file..<BR>\n";
         
-      if (!$aspConverter->loadFile("./openair/$file", "OPENAIR"))
+      if (!$aspConverter->loadFile("./openair_in/$file", "OPENAIR"))
       {
         echo $aspConverter->warnings;
         echo $aspConverter->errors;
@@ -32,7 +31,7 @@ if ($handle = opendir('./openair')) {
       }
             
       $inputCountryCode = strtolower(substr($file, 0, 2));
-      $aipFileName = "./aip/".$inputCountryCode."_asp.aip";
+      $aipFileName = "./aip_out/".$inputCountryCode."_asp.aip";
       
       if ($aspConverter->writeToFile($aipFileName, "OPENAIP", "23"))
       {
@@ -51,8 +50,6 @@ if ($handle = opendir('./openair')) {
   
   closedir($handle);
 }
-
-zipDir("./aip", "./asp_all.zip");
 
 echo "Finished<BR>\n";
 
