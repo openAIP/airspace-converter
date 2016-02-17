@@ -36,9 +36,10 @@ class AipPoint extends GeoLocation
     {
         $absLat = abs($this->lat);
         $latDeg = floor($absLat);
-        $tempSecs = floor(($absLat - $latDeg) * 3600.0);
-        $latMin = $tempSecs / 60;
-        $latSec = $tempSecs % 60;
+        $tmpMin = ($absLat - $latDeg) * 60.0;
+        $latMin = floor($tmpMin);
+        $tmpSec = ($tmpMin - $latMin) * 60.0;
+        $latSec = round ($tmpSec);
         $latSign = "N";
         if ($this->lat < 0.0) {
             $latSign = "S";
@@ -46,16 +47,16 @@ class AipPoint extends GeoLocation
 
         $absLon = abs($this->lon);
         $lonDeg = floor($absLon);
-        $tempSecs = floor(($absLon - $lonDeg) * 3600.0);
-        $lonMin = $tempSecs / 60;
-        $lonSec = $tempSecs % 60;
+        $tmpMin = ($absLon - $lonDeg) * 60.0;
+        $lonMin = floor($tmpMin);
+        $tmpSec = ($tmpMin - $lonMin) * 60.0;
+        $lonSec = round ($tmpSec);
         $lonSign = "E";
         if ($this->lon < 0.0) {
             $lonSign = "W";
         }
 
-        $dp = sprintf("DP %02d:%02d:%02d %s %03d:%02d:%02d %s\n", $latDeg, $latMin, $latSec, $latSign, $lonDeg, $lonMin,
-            $lonSec, $lonSign);
+        $dp = sprintf("DP %02d:%02d:%02d %s %03d:%02d:%02d %s\n", $latDeg, $latMin, $latSec, $latSign, $lonDeg, $lonMin, $lonSec, $lonSign);
         return $dp;
     }
 
