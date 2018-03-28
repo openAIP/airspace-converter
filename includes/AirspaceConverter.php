@@ -18,6 +18,18 @@ class AirspaceConverter
     /**
      * @var string
      */
+    public $errors;
+    /**
+     * @var string
+     */
+    public $warnings;
+    /**
+     * @var array
+     */
+    public $airspaces;
+    /**
+     * @var string
+     */
     private $srcFormat;
     /**
      * @var string
@@ -39,18 +51,6 @@ class AirspaceConverter
      * @var float
      */
     private $minLon;
-    /**
-     * @var string
-     */
-    public $errors;
-    /**
-     * @var string
-     */
-    public $warnings;
-    /**
-     * @var array
-     */
-    public $airspaces;
 
     /**
      * Construct.
@@ -65,7 +65,7 @@ class AirspaceConverter
         $this->minLat = -90.0;
         $this->maxLon = 180.0;
         $this->minLon = -180.0;
-        $this->airspaces = array();
+        $this->airspaces = [];
     }
 
     /**
@@ -147,6 +147,120 @@ class AirspaceConverter
         } else {
             return $minArcRes;
         }
+    }
+
+    /**
+     * @param $destPath
+     * @param $outputFormat
+     * @param $version
+     *
+     * @return bool
+     */
+    public function writeToFile($destPath, $outputFormat, $version)
+    {
+        // write result to file
+        $outHandle = fopen($destPath, 'w');
+        if ($outHandle) {
+            if (!strncmp($outputFormat, "OPENAIR", 7)) {
+                date_default_timezone_set('UTC');
+                fwrite($outHandle,
+                    utf8_encode("*  **********************************************************************************************\n"));
+                fwrite($outHandle, utf8_encode("*  Data converted on ".date('Y-m-d H:i:s')." UTC\n"));
+                fwrite($outHandle, utf8_encode("*  \n"));
+                fwrite($outHandle,
+                    utf8_encode("*  This data is owned by Butterfly Avionics GmbH and licensed under the CC BY-NC-SA,\n"));
+                fwrite($outHandle,
+                    utf8_encode("*  not to be used for commercial purposes. For more information on commercial licensing visit\n"));
+                fwrite($outHandle, utf8_encode("*  \n"));
+                fwrite($outHandle, utf8_encode("*  http://www.openaip.net/commercial-licensing\n"));
+                fwrite($outHandle, utf8_encode("*  \n"));
+                fwrite($outHandle,
+                    utf8_encode("*  openAIP data is not certified and must not be used for primary navigation or flight planning.\n"));
+                fwrite($outHandle,
+                    utf8_encode("*  NEVER RELY ON OPENAIP DATA. openAIP data contains errors. Using openAIP data may\n"));
+                fwrite($outHandle, utf8_encode("*  result in serious injury or death, use at your own risk!\n"));
+                fwrite($outHandle, utf8_encode("*  \n"));
+                fwrite($outHandle,
+                    utf8_encode("*  OPENAIP OFFERS THE WORK AS-IS AND MAKES NO REPRESENTATIONS OR WARRANTIES OF ANY KIND\n"));
+                fwrite($outHandle,
+                    utf8_encode("*  CONCERNING THE WORK, EXPRESS, IMPLIED, STATUTORY OR OTHERWISE, INCLUDING, WITHOUT LIMITATION,\n"));
+                fwrite($outHandle,
+                    utf8_encode("*  WARRANTIES OF TITLE, MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, NONINFRINGEMENT, OR\n"));
+                fwrite($outHandle,
+                    utf8_encode("*  THE ABSENCE OF LATENT OR OTHER DEFECTS, ACCURACY, OR THE PRESENCE OF ABSENCE OF ERRORS,\n"));
+                fwrite($outHandle,
+                    utf8_encode("*  WHETHER OR NOT DISCOVERABLE. SOME JURISDICTIONS DO NOT ALLOW THE EXCLUSION OF IMPLIED\n"));
+                fwrite($outHandle, utf8_encode("*  WARRANTIES, SO THIS EXCLUSION MAY NOT APPLY TO YOU.\n"));
+                fwrite($outHandle, utf8_encode("*  \n"));
+                fwrite($outHandle,
+                    utf8_encode("*  EXCEPT TO THE EXTENT REQUIRED BY APPLICABLE LAW, IN NO EVENT WILL OPENAIP BE LIABLE TO YOU ON\n"));
+                fwrite($outHandle,
+                    utf8_encode("*  ANY LEGAL THEORY FOR ANY SPECIAL, INCIDENTAL, CONSEQUENTIAL, PUNITIVE OR EXEMPLARY DAMAGES\n"));
+                fwrite($outHandle,
+                    utf8_encode("*  ARISING OUT OF THIS LICENSE OR THE USE OF THE WORK, EVEN IF OPENAIP HAS BEEN ADVISED OF THE\n"));
+                fwrite($outHandle, utf8_encode("*  POSSIBILITY OF SUCH DAMAGES.\n"));
+                fwrite($outHandle,
+                    utf8_encode("*  **********************************************************************************************\n\n"));
+
+                foreach ($this->airspaces as $asp) {
+                    fwrite($outHandle, utf8_encode($asp->toOpenAir()));
+                    fwrite($outHandle, utf8_encode("\n"));
+                }
+
+                fclose($outHandle);
+
+                return true;
+            } else {
+                if (!strncmp($outputFormat, "OPENAIP", 7)) {
+                    fwrite($outHandle, utf8_encode("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\" ?>\n"));
+                    fwrite($outHandle,
+                        utf8_encode("<OPENAIP DATAFORMAT=\"1\" VERSION=\"".$version."\" xmlns=\"http://www.butterfly-avionics.com\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:schemaLocation=\"http://www.butterfly-avionics.com openaip.xsd\">\n<AIRSPACES>\n"));
+
+                    foreach ($this->airspaces as $asp) {
+                        fwrite($outHandle, utf8_encode($asp->toXml("  ")));
+                    }
+
+                    fwrite($outHandle, utf8_encode("</AIRSPACES>\n</OPENAIP>\n"));
+
+                    fclose($outHandle);
+
+                    return true;
+                } else {
+                    if (!strncmp($outputFormat, "GML", 3)) {
+                        fwrite($outHandle,
+                            utf8_encode("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\" ?>\n"));
+                        fwrite($outHandle, utf8_encode("<OPENAIP:airspaces
+             xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"
+             xsi:schemaLocation=\"www.openaip.net/ airspaces.xsd\"
+             xmlns:OPENAIP=\"http://www.openaip.net/\"
+             xmlns:gml=\"http://www.opengis.net/gml\">
+          <gml:boundedBy>
+            <gml:Box>
+              <gml:coord><gml:X>$this->minLon</gml:X><gml:Y>$this->minLat</gml:Y></gml:coord>
+              <gml:coord><gml:X>$this->maxLon</gml:X><gml:Y>$this->maxLat</gml:Y></gml:coord>
+            </gml:Box>
+          </gml:boundedBy>\n"));
+
+                        $fid = 0;
+                        foreach ($this->airspaces as $asp) {
+                            fwrite($outHandle, utf8_encode($asp->toGml("  ", $fid)));
+                            $fid += 1;
+                        }
+
+                        fwrite($outHandle, utf8_encode("</OPENAIP:airspaces>\n"));
+
+                        fclose($outHandle);
+
+                        return true;
+                    } else {
+                        $this->errors .= "ERROR: Unknown output format ".$outputFormat."!\n";
+                    }
+                }
+            }
+        }
+        $this->errors .= "ERROR: Could not write to destination file ".$destPath."!\n";
+
+        return false;
     }
 
     /**
@@ -309,7 +423,7 @@ class AirspaceConverter
         $this->warnings = "";
 
         unset($this->airspaces);
-        $this->airspaces = array();
+        $this->airspaces = [];
 
         if (!strncmp($this->srcFormat, "OPENAIP", 7)) {
             $xml = simplexml_load_string($this->srcString);
@@ -354,6 +468,7 @@ class AirspaceConverter
                 // add current airspace to array
                 $this->airspaces[] = $asp;
             }
+
             return true;
         } else {
             if (!strncmp($this->srcFormat, "OPENAIR", 7)) {
@@ -488,26 +603,31 @@ class AirspaceConverter
                                                                 if (!strcmp($stype, "F")) {
                                                                     $asp->category = "F";
                                                                 } else {
-                                                                    if (!strcmp($stype, "Q")) {
-                                                                        $asp->category = "DANGER";
+                                                                    if (!strcmp($stype, "G")) {
+                                                                        $asp->category = "G";
                                                                     } else {
-                                                                        if (!strcmp($stype, "W")) {
-                                                                            $asp->category = "GLIDING";
+                                                                        if (!strcmp($stype, "Q")) {
+                                                                            $asp->category = "DANGER";
                                                                         } else {
-                                                                            if (!strcmp($stype, "GP")) {
-                                                                                $asp->category = "RESTRICTED";
+                                                                            if (!strcmp($stype, "W")) {
+                                                                                $asp->category = "GLIDING";
                                                                             } else {
-                                                                                if (!strcmp($stype, "TMZ")) {
-                                                                                    $asp->category = "TMZ";
+                                                                                if (!strcmp($stype, "GP")) {
+                                                                                    $asp->category = "RESTRICTED";
                                                                                 } else {
-                                                                                    if (!strcmp($stype, "S")) {
-                                                                                        $asp->category = "DROPZONE";
+                                                                                    if (!strcmp($stype, "TMZ")) {
+                                                                                        $asp->category = "TMZ";
                                                                                     } else {
-                                                                                        if (!strcmp($stype, "RMZ")) {
-                                                                                            $asp->category = "RMZ";
+                                                                                        if (!strcmp($stype, "S")) {
+                                                                                            $asp->category = "DROPZONE";
                                                                                         } else {
-                                                                                            $this->warnings .= "Warning: Unknown airspace category in line: ".$line."\n";
-                                                                                            $asp->category = "UNKNOWN";
+                                                                                            if (!strcmp($stype,
+                                                                                                "RMZ")) {
+                                                                                                $asp->category = "RMZ";
+                                                                                            } else {
+                                                                                                $this->warnings .= "Warning: Unknown airspace category in line: ".$line."\n";
+                                                                                                $asp->category = "UNKNOWN";
+                                                                                            }
                                                                                         }
                                                                                     }
                                                                                 }
@@ -556,7 +676,7 @@ class AirspaceConverter
                                     $limit->refString = "STD";
                                     $limit->unitString = "FL";
                                     sscanf(substr($str, 2), "%d", $tInt);
-                                    $limit->altString = (string) $tInt;
+                                    $limit->altString = (string)$tInt;
                                 } else {
                                     if ((strpos($str, "GND") === 0) || (strpos($str, "SFC") === 0)) {
                                         // "GND", "SFC"
@@ -573,7 +693,7 @@ class AirspaceConverter
                                                 $tInt = $tInt * 3.2808399;
                                             }
 
-                                            $limit->altString = (string) $tInt;
+                                            $limit->altString = (string)$tInt;
                                         } else {
                                             // "2000F GND", "2000F AGL", "2000AGND", "2000 FT ASFC", "1500GND"
                                             $limit->refString = "GND";
@@ -584,7 +704,7 @@ class AirspaceConverter
                                                 $tInt = $tInt * 3.2808399;
                                             }
 
-                                            $limit->altString = (string) $tInt;
+                                            $limit->altString = (string)$tInt;
                                         }
                                     }
                                 }
@@ -843,124 +963,16 @@ class AirspaceConverter
                         $this->warnings .= "Warning: ".$asp->name." contains only ".$np." points\n";
                     }
                 }
+
                 return true;
             } // end OPENAIR
             else {
                 $this->errors .= "ERROR: Unknown source format ".$this->srcFormat."!\n";
+
                 return false;
             }
         }
 
-        return false;
-    }
-
-    /**
-     * @param $destPath
-     * @param $outputFormat
-     * @param $version
-     *
-     * @return bool
-     */
-    public function writeToFile($destPath, $outputFormat, $version)
-    {
-        // write result to file
-        $outHandle = fopen($destPath, 'w');
-        if ($outHandle) {
-            if (!strncmp($outputFormat, "OPENAIR", 7)) {
-                date_default_timezone_set('UTC');
-                fwrite($outHandle,
-                    utf8_encode("*  **********************************************************************************************\n"));
-                fwrite($outHandle, utf8_encode("*  Data converted on ".date('Y-m-d H:i:s')." UTC\n"));
-                fwrite($outHandle, utf8_encode("*  \n"));
-                fwrite($outHandle,
-                    utf8_encode("*  This data is owned by Butterfly Avionics GmbH and licensed under the CC BY-NC-SA,\n"));
-                fwrite($outHandle,
-                    utf8_encode("*  not to be used for commercial purposes. For more information on commercial licensing visit\n"));
-                fwrite($outHandle, utf8_encode("*  \n"));
-                fwrite($outHandle, utf8_encode("*  http://www.openaip.net/commercial-licensing\n"));
-                fwrite($outHandle, utf8_encode("*  \n"));
-                fwrite($outHandle,
-                    utf8_encode("*  openAIP data is not certified and must not be used for primary navigation or flight planning.\n"));
-                fwrite($outHandle,
-                    utf8_encode("*  NEVER RELY ON OPENAIP DATA. openAIP data contains errors. Using openAIP data may\n"));
-                fwrite($outHandle, utf8_encode("*  result in serious injury or death, use at your own risk!\n"));
-                fwrite($outHandle, utf8_encode("*  \n"));
-                fwrite($outHandle,
-                    utf8_encode("*  OPENAIP OFFERS THE WORK AS-IS AND MAKES NO REPRESENTATIONS OR WARRANTIES OF ANY KIND\n"));
-                fwrite($outHandle,
-                    utf8_encode("*  CONCERNING THE WORK, EXPRESS, IMPLIED, STATUTORY OR OTHERWISE, INCLUDING, WITHOUT LIMITATION,\n"));
-                fwrite($outHandle,
-                    utf8_encode("*  WARRANTIES OF TITLE, MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, NONINFRINGEMENT, OR\n"));
-                fwrite($outHandle,
-                    utf8_encode("*  THE ABSENCE OF LATENT OR OTHER DEFECTS, ACCURACY, OR THE PRESENCE OF ABSENCE OF ERRORS,\n"));
-                fwrite($outHandle,
-                    utf8_encode("*  WHETHER OR NOT DISCOVERABLE. SOME JURISDICTIONS DO NOT ALLOW THE EXCLUSION OF IMPLIED\n"));
-                fwrite($outHandle, utf8_encode("*  WARRANTIES, SO THIS EXCLUSION MAY NOT APPLY TO YOU.\n"));
-                fwrite($outHandle, utf8_encode("*  \n"));
-                fwrite($outHandle,
-                    utf8_encode("*  EXCEPT TO THE EXTENT REQUIRED BY APPLICABLE LAW, IN NO EVENT WILL OPENAIP BE LIABLE TO YOU ON\n"));
-                fwrite($outHandle,
-                    utf8_encode("*  ANY LEGAL THEORY FOR ANY SPECIAL, INCIDENTAL, CONSEQUENTIAL, PUNITIVE OR EXEMPLARY DAMAGES\n"));
-                fwrite($outHandle,
-                    utf8_encode("*  ARISING OUT OF THIS LICENSE OR THE USE OF THE WORK, EVEN IF OPENAIP HAS BEEN ADVISED OF THE\n"));
-                fwrite($outHandle, utf8_encode("*  POSSIBILITY OF SUCH DAMAGES.\n"));
-                fwrite($outHandle,
-                    utf8_encode("*  **********************************************************************************************\n\n"));
-
-                foreach ($this->airspaces as $asp) {
-                    fwrite($outHandle, utf8_encode($asp->toOpenAir()));
-                    fwrite($outHandle, utf8_encode("\n"));
-                }
-
-                fclose($outHandle);
-                return true;
-            } else {
-                if (!strncmp($outputFormat, "OPENAIP", 7)) {
-                    fwrite($outHandle, utf8_encode("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\" ?>\n"));
-                    fwrite($outHandle,
-                        utf8_encode("<OPENAIP DATAFORMAT=\"1\" VERSION=\"".$version."\" xmlns=\"http://www.butterfly-avionics.com\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:schemaLocation=\"http://www.butterfly-avionics.com openaip.xsd\">\n<AIRSPACES>\n"));
-
-                    foreach ($this->airspaces as $asp) {
-                        fwrite($outHandle, utf8_encode($asp->toXml("  ")));
-                    }
-
-                    fwrite($outHandle, utf8_encode("</AIRSPACES>\n</OPENAIP>\n"));
-
-                    fclose($outHandle);
-                    return true;
-                } else {
-                    if (!strncmp($outputFormat, "GML", 3)) {
-                        fwrite($outHandle,
-                            utf8_encode("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\" ?>\n"));
-                        fwrite($outHandle, utf8_encode("<OPENAIP:airspaces
-             xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"
-             xsi:schemaLocation=\"www.openaip.net/ airspaces.xsd\"
-             xmlns:OPENAIP=\"http://www.openaip.net/\"
-             xmlns:gml=\"http://www.opengis.net/gml\">
-          <gml:boundedBy>
-            <gml:Box>
-              <gml:coord><gml:X>$this->minLon</gml:X><gml:Y>$this->minLat</gml:Y></gml:coord>
-              <gml:coord><gml:X>$this->maxLon</gml:X><gml:Y>$this->maxLat</gml:Y></gml:coord>
-            </gml:Box>
-          </gml:boundedBy>\n"));
-
-                        $fid = 0;
-                        foreach ($this->airspaces as $asp) {
-                            fwrite($outHandle, utf8_encode($asp->toGml("  ", $fid)));
-                            $fid += 1;
-                        }
-
-                        fwrite($outHandle, utf8_encode("</OPENAIP:airspaces>\n"));
-
-                        fclose($outHandle);
-                        return true;
-                    } else {
-                        $this->errors .= "ERROR: Unknown output format ".$outputFormat."!\n";
-                    }
-                }
-            }
-        }
-        $this->errors .= "ERROR: Could not write to destination file ".$destPath."!\n";
         return false;
     }
 }

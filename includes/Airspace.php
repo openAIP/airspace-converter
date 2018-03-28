@@ -128,27 +128,31 @@ class Airspace
                                                 if (!strcmp($this->category, "F")) {
                                                     $result .= "F";
                                                 } else {
-                                                    if (!strcmp($this->category, "DANGER")) {
-                                                        $result .= "Q";
+                                                    if (!strcmp($this->category, "G")) {
+                                                        $result .= "G";
                                                     } else {
-                                                        if (!strcmp($this->category, "WAVE")) {
-                                                            $result .= "W";
+                                                        if (!strcmp($this->category, "DANGER")) {
+                                                            $result .= "Q";
                                                         } else {
-                                                            if (!strcmp($this->category, "TMZ")) {
-                                                                $result .= "TMZ";
+                                                            if (!strcmp($this->category, "WAVE")) {
+                                                                $result .= "W";
                                                             } else {
-                                                                if (!strcmp($this->category, "RMZ")) {
-                                                                    $result .= "RMZ";
+                                                                if (!strcmp($this->category, "TMZ")) {
+                                                                    $result .= "TMZ";
                                                                 } else {
-                                                                    if (!strcmp($this->category, "GLIDING")) {
-                                                                        // use Wave type for gliding, as G is a bit ambiguous
-                                                                        // due to airspace class G
-                                                                        $result .= "W";
+                                                                    if (!strcmp($this->category, "RMZ")) {
+                                                                        $result .= "RMZ";
                                                                     } else {
-                                                                        if (!strcmp($this->category, "DROPZONE")) {
-                                                                            $result .= "S";
+                                                                        if (!strcmp($this->category, "GLIDING")) {
+                                                                            // use Wave type for gliding, as G is a bit ambiguous
+                                                                            // due to airspace class G
+                                                                            $result .= "W";
                                                                         } else {
-                                                                            $result .= "X";
+                                                                            if (!strcmp($this->category, "DROPZONE")) {
+                                                                                $result .= "S";
+                                                                            } else {
+                                                                                $result .= "X";
+                                                                            }
                                                                         }
                                                                     }
                                                                 }
@@ -197,6 +201,7 @@ class Airspace
 
         $result .= $indent." </OPENAIP:aspc>\n";
         $result .= $indent."</gml:featureMember>\n";
+
         return $result;
     }
 
