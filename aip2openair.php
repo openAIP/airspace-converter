@@ -22,7 +22,7 @@ $aspConverter = new AirspaceConverter();
 if ($handle = opendir('./aip_in')) {
 
     while (false !== ($file = readdir($handle))) {
-        if ($file != "." && $file != "..") {
+        if ($file != "." && $file != ".." && strpos($file, '.') !== 0) {
 
             echo "Processing $file..\n";
 
