@@ -10,9 +10,12 @@
 require_once "includes/AirspaceConverter.php";
 require_once 'includes/Utils.php';
 
+const IN_PATH = "./openair_in";
+const OUT_PATH = "./aip_out";
+
 // recreate the output dir..
-Utils::rrmdir("./aip_out");
-mkdir("./aip_out");
+Utils::rrmdir(OUT_PATH);
+mkdir(OUT_PATH);
 
 $aspConverter = new AirspaceConverter();
 
@@ -20,24 +23,21 @@ if ($handle = opendir('./openair_in')) {
 
     while (false !== ($file = readdir($handle))) {
         if ($file != "." && $file != "..") {
-            if (substr($file, 2, 1) != "_") {
-                echo "Skip $file..\n";
-                continue;
-            }
 
             echo "Processing $file..\n";
 
-            if (!$aspConverter->loadFile("./openair_in/$file", "OPENAIR")) {
+            if (!$aspConverter->loadFile(IN_PATH."/".$file, "OPENAIR")) {
                 echo $aspConverter->warnings;
                 echo $aspConverter->errors;
                 echo "FAILED\n";
                 continue;
             }
 
-            $inputCountryCode = strtolower(substr($file, 0, 2));
-            $aipFileName = "./aip_out/".$inputCountryCode."_asp.aip";
+            $revFile = strrev($file);
+            $outFile = strrev(substr($revFile, (strpos($revFile, '.') + 1))).'.aip';
+            $outFile = OUT_PATH."/".$outFile;
 
-            if ($aspConverter->writeToFile($aipFileName, "OPENAIP", "23")) {
+            if ($aspConverter->writeToFile($outFile, "OPENAIP", "23")) {
                 echo $aspConverter->warnings;
                 echo "OK\n";
             } else {

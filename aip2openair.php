@@ -10,34 +10,34 @@
 require_once 'includes/AirspaceConverter.php';
 require_once 'includes/Utils.php';
 
-$aspConverter = new AirspaceConverter();
+const IN_PATH = "./aip_in";
+const OUT_PATH = "./openair_out";
 
 // recreate the output dir..
-Utils::rrmdir("./openair_out");
-mkdir("./openair_out");
+Utils::rrmdir(OUT_PATH);
+mkdir(OUT_PATH);
 
+$aspConverter = new AirspaceConverter();
 
 if ($handle = opendir('./aip_in')) {
 
     while (false !== ($file = readdir($handle))) {
         if ($file != "." && $file != "..") {
-            if (substr($file, -3) != "aip") {
-                echo "Skip $file..\n";
-                continue;
-            }
 
             echo "Processing $file..\n";
 
-            if (!$aspConverter->loadFile("./aip_in/$file", "OPENAIP")) {
+            if (!$aspConverter->loadFile(IN_PATH."/".$file, "OPENAIP")) {
                 echo $aspConverter->warnings;
                 echo $aspConverter->errors;
                 echo "LOAD FAILED \n";
                 continue;
             }
 
-            $openairFileName = "./openair_out/".str_replace("aip", "txt", $file);
+            $revFile = strrev($file);
+            $outFile = strrev(substr($revFile, (strpos($revFile, '.') + 1))).'.txt';
+            $outFile = OUT_PATH."/".$outFile;
 
-            if ($aspConverter->writeToFile($openairFileName, "OPENAIR", "23")) {
+            if ($aspConverter->writeToFile($outFile, "OPENAIR", "23")) {
                 echo $aspConverter->warnings;
                 echo "OK \n";
             } else {

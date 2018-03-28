@@ -10,9 +10,12 @@
 require_once "includes/AirspaceConverter.php";
 require_once 'includes/Utils.php';
 
+const IN_PATH = "./openair_in";
+const OUT_PATH = "./gml_out";
+
 // recreate the output dir..
-Utils::rrmdir("./gml_out");
-mkdir("./gml_out");
+Utils::rrmdir(OUT_PATH);
+mkdir(OUT_PATH);
 
 $aspConverter = new AirspaceConverter();
 
@@ -20,24 +23,21 @@ if ($handle = opendir('./openair_in')) {
 
     while (false !== ($file = readdir($handle))) {
         if ($file != "." && $file != "..") {
-            if (substr($file, 2, 1) != "_") {
-                echo "Skip $file..\n";
-                continue;
-            }
 
             echo "Processing $file..\n";
 
-            if (!$aspConverter->loadFile("./openair_in/$file", "OPENAIR")) {
+            if (!$aspConverter->loadFile(IN_PATH."/".$file, "OPENAIR")) {
                 echo $aspConverter->warnings;
                 echo $aspConverter->errors;
                 echo "FAILED\n";
                 continue;
             }
 
-            $inputCountryCode = strtolower(substr($file, 0, 2));
-            $aipFileName = "./gml_out/".$inputCountryCode."_asp.gml";
+            $revFile = strrev($file);
+            $outFile = strrev(substr($revFile, (strpos($revFile, '.') + 1))).'.gml';
+            $outFile = OUT_PATH."/".$outFile;
 
-            if ($aspConverter->writeToFile($aipFileName, "GML", "23")) {
+            if ($aspConverter->writeToFile($outFile, "GML", "23")) {
                 echo $aspConverter->warnings;
                 echo "OK\n";
             } else {

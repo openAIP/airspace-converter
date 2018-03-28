@@ -1,5 +1,5 @@
-# ignore test output
-
 /aip_out/*
+/aip_in/*
 /gml_out/*
 /openair_out/*
+/openair_in/*
