@@ -231,7 +231,7 @@ class AirspaceConverter
                             utf8_encode("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\" ?>\n"));
                         fwrite($outHandle, utf8_encode("<OPENAIP:airspaces
              xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"
-             xsi:schemaLocation=\"www.openaip.net/ airspaces.xsd\"
+             xsi:schemaLocation=\"www.openaip.net/airspaces.xsd\"
              xmlns:OPENAIP=\"http://www.openaip.net/\"
              xmlns:gml=\"http://www.opengis.net/gml\">
           <gml:boundedBy>
