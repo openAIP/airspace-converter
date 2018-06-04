@@ -195,7 +195,8 @@ class Airspace
         $result .= $indent." <OPENAIP:aspc fid=\"$fid\">\n";
         $result .= $this->geometry->toGml($indent." ");
         $result .= $indent." <OPENAIP:CLASS>$this->category</OPENAIP:CLASS>\n";
-        $result .= $indent." <OPENAIP:NAME>$this->name</OPENAIP:NAME>\n";
+        // wrap airspace name in CDATA tag since it may contain special characters
+        $result .= $indent." <OPENAIP:NAME><![CDATA[".$this->name."]]></OPENAIP:NAME>\n";
         $result .= $this->bottomLimit->toGml($indent." ");
         $result .= $this->topLimit->toGml($indent." ");
 
