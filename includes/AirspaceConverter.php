@@ -676,8 +676,17 @@ class AirspaceConverter
                                 $tInt = 0;
                                 $str = substr($line, 3);
 
+                                if (strpos($str, "UNL") !== false || strpos($str, "UNLIMITED") !== false) {
+
+                                    // "UNL"
+                                    $limit->refString = "STD";
+                                    $limit->unitString = "FL";
+                                    $limit->altString = 999;
+
+                                    echo "Using FL999 for 'unlimited' ceiling in airspace $asp->name.\n";
+                                }
                                 // parse alt limit
-                                if (strpos($str, "FL") !== false) {
+                                elseif (strpos($str, "FL") !== false) {
 
                                     // "FL195xxx", "FL 195xxx"
                                     $limit->refString = "STD";
