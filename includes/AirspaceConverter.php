@@ -272,6 +272,13 @@ class AirspaceConverter
      */
     private function updateAspPath($asp, $currentPath, $pathIsAirway, $airwayWidth, $np)
     {
+        // handle paths, containing only two points (e.g. french 'axes' airspaces) as airways
+        if ($np == 2)
+        {
+            $pathIsAirway = true;
+            $airwayWidth = 0.01; // 0.01nm
+        }
+
         if ($pathIsAirway == true) {
             $airway = new AipPath(); // "left border"
             $rightPath = new AipPath(); // "right border"
