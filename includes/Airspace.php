@@ -191,6 +191,12 @@ class Airspace
      */
     public function toGml($indent, $fid)
     {
+        // handle empty names
+        $this->name = empty($this->name) ? 'UNKNOWN' : $this->name;
+        if (empty($this->name)) {
+            echo "Airspace FID $fid has empty name. Setting UNKNOWN as airspace name.";
+        }
+
         $result = $indent."<gml:featureMember>\n";
         $result .= $indent." <OPENAIP:aspc fid=\"$fid\">\n";
         $result .= $this->geometry->toGml($indent." ");
