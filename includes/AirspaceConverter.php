@@ -129,7 +129,7 @@ class AirspaceConverter
 
         // count number of AC definitions in file
         $filecontent = file_get_contents($srcPath);
-        if (!preg_match_all('/AC\s+[a-z]+/i', $filecontent, $aspdefs)) {
+        if (!preg_match_all("/^AC\s+[A-Za-z]+$/m", $filecontent, $aspdefs)) {
             $this->errors = "No airspace definitions found in file.\n";
 
             return null;
@@ -140,7 +140,7 @@ class AirspaceConverter
 
         // extract all titles to later compare written airspaces to found definitions in file which allows
         // for easier debugging of erroneous file
-        preg_match_all("/^AN\s+(?'title'.*)$/i", $filecontent, $aspTitles);
+        preg_match_all("/^AN\s+(?'title'.*)$/m", $filecontent, $aspTitles);
         $this->fileTitles = $aspTitles['title'];
 
         // open input file
@@ -296,8 +296,12 @@ class AirspaceConverter
 
                         $diffTitles = array_diff($this->fileTitles, $this->processedTitles);
                         if (!empty($diffTitles)) {
+                            echo "\n";
+                            echo "Airspaces not written to file:\n";
+                            echo "-------------------------------------\n";
+                            echo "!!! List may contain false positives if title contains special chars & and ' !!!.\n\n";
                             foreach ($diffTitles as $title) {
-                                $this->errors .= sprintf("ERROR: Airspace with title '%s' not written to file!\n", $title);
+                                echo sprintf("ERROR: Airspace with title '%s' not written to file!\n", $title);
                             }
                         }
                         fwrite($outHandle, utf8_encode("</OPENAIP:airspaces>\n"));
@@ -591,7 +595,8 @@ class AirspaceConverter
                             $name = substr($line, 3);
 
                             if (!strncmp(substr($name, 0, 3), "RMZ", 3)) {
-                                $name = trim(substr($name, 3));
+                                // keep original airspace name as defined in file => uncomment to remove RMZ
+                                // $name = trim(substr($name, 3));
                                 $asp->category = "RMZ";
                             }
 
