@@ -299,7 +299,7 @@ class AirspaceConverter
                             echo "\n";
                             echo "Airspaces not written to file:\n";
                             echo "-------------------------------------\n";
-                            echo "!!! List may contain false positives if title contains special chars & and ' !!!.\n\n";
+                            echo "!!! List may contain false positives if title contains special characters or has multiple whitespaces. Please check output file !!!.\n\n";
                             foreach ($diffTitles as $title) {
                                 echo sprintf("ERROR: Airspace with title '%s' not written to file!\n", $title);
                             }
