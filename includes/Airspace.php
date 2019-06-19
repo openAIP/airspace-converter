@@ -16,9 +16,17 @@ require_once 'AipVerticalLimit.php';
 class Airspace
 {
     /**
+     * @var AipVerticalLimit
+     */
+    public $bottomLimit;
+    /**
      * @var string
      */
     public $category;
+    /**
+     * @var AipGeometry
+     */
+    public $geometry;
     /**
      * @var string
      */
@@ -27,14 +35,6 @@ class Airspace
      * @var AipVerticalLimit
      */
     public $topLimit;
-    /**
-     * @var AipVerticalLimit
-     */
-    public $bottomLimit;
-    /**
-     * @var AipGeometry
-     */
-    public $geometry;
 
     /**
      * Construct
@@ -55,35 +55,30 @@ class Airspace
     }
 
     /**
-     * $indent is a string, containing whitespaces, which is
-     * prepended to each line.
+     * @param $indent
+     * @param $fid
      *
-     * <ASP CATEGORY="RESTRICTED">
-     *   <NAME>ED-R203</NAME>
-     *   <ALTLIMIT_TOP REFERENCE="STD">
-     *     <ALT UNIT="FL">150</ALT>
-     *   </ALTLIMIT_TOP>
-     *   <ALTLIMIT_BOTTOM REFERENCE="STD">
-     *     <ALT UNIT="FL">80</ALT>
-     *   </ALTLIMIT_BOTTOM>
-     *   <GEOMETRY>
-     *     <PATH>
-     *       <POINT><LAT>52.1222</LAT><LON>8.31111</LON></POINT>
-     *       ...
-     *     </PATH>
-     *   </GEOMETRY>
-     * </ASP>
-     *
-     * @param $ident
+     * @return string
      */
-    public function toXml($indent)
+    public function toGml($indent, $fid)
     {
-        $result = $indent."<ASP CATEGORY=\"".$this->category."\">\n";
-        $result .= $indent." <NAME>".$this->name."</NAME>\n";
-        $result .= $this->bottomLimit->toXml($indent." ");
-        $result .= $this->topLimit->toXml($indent." ");
-        $result .= $this->geometry->toXml($indent." ");
-        $result .= $indent."</ASP>\n";
+        // handle empty names
+        $this->name = empty($this->name) ? 'UNKNOWN' : $this->name;
+        if (empty($this->name)) {
+            echo "Airspace FID $fid has empty name. Setting UNKNOWN as airspace name.";
+        }
+
+        $result = $indent."<gml:featureMember>\n";
+        $result .= $indent." <OPENAIP:aspc fid=\"$fid\">\n";
+        $result .= $this->geometry->toGml($indent." ");
+        $result .= $indent." <OPENAIP:CLASS>$this->category</OPENAIP:CLASS>\n";
+        // wrap airspace name in CDATA tag since it may contain special characters
+        $result .= $indent." <OPENAIP:NAME><![CDATA[".$this->name."]]></OPENAIP:NAME>\n";
+        $result .= $this->bottomLimit->toGml($indent." ");
+        $result .= $this->topLimit->toGml($indent." ");
+
+        $result .= $indent." </OPENAIP:aspc>\n";
+        $result .= $indent."</gml:featureMember>\n";
 
         return $result;
     }
@@ -184,39 +179,58 @@ class Airspace
     }
 
     /**
-     * @param $indent
-     * @param $fid
-     *
-     * @return string
-     */
-    public function toGml($indent, $fid)
-    {
-        // handle empty names
-        $this->name = empty($this->name) ? 'UNKNOWN' : $this->name;
-        if (empty($this->name)) {
-            echo "Airspace FID $fid has empty name. Setting UNKNOWN as airspace name.";
-        }
-
-        $result = $indent."<gml:featureMember>\n";
-        $result .= $indent." <OPENAIP:aspc fid=\"$fid\">\n";
-        $result .= $this->geometry->toGml($indent." ");
-        $result .= $indent." <OPENAIP:CLASS>$this->category</OPENAIP:CLASS>\n";
-        // wrap airspace name in CDATA tag since it may contain special characters
-        $result .= $indent." <OPENAIP:NAME><![CDATA[".$this->name."]]></OPENAIP:NAME>\n";
-        $result .= $this->bottomLimit->toGml($indent." ");
-        $result .= $this->topLimit->toGml($indent." ");
-
-        $result .= $indent." </OPENAIP:aspc>\n";
-        $result .= $indent."</gml:featureMember>\n";
-
-        return $result;
-    }
-
-    /**
      *
      */
     public function toWKT()
     {
         // @todo: implement
+    }
+
+    /**
+     * $indent is a string, containing whitespaces, which is
+     * prepended to each line.
+     *
+     * <ASP CATEGORY="RESTRICTED">
+     *   <NAME>ED-R203</NAME>
+     *   <ALTLIMIT_TOP REFERENCE="STD">
+     *     <ALT UNIT="FL">150</ALT>
+     *   </ALTLIMIT_TOP>
+     *   <ALTLIMIT_BOTTOM REFERENCE="STD">
+     *     <ALT UNIT="FL">80</ALT>
+     *   </ALTLIMIT_BOTTOM>
+     *   <GEOMETRY>
+     *     <PATH>
+     *       <POINT><LAT>52.1222</LAT><LON>8.31111</LON></POINT>
+     *       ...
+     *     </PATH>
+     *   </GEOMETRY>
+     * </ASP>
+     *
+     * @param $ident
+     */
+    public function toXml($indent)
+    {
+        $result = $indent."<ASP CATEGORY=\"".$this->category."\">\n";
+        $result .= $indent." <NAME>".$this->name."</NAME>\n";
+        $result .= $this->bottomLimit->toXml($indent." ");
+        $result .= $this->topLimit->toXml($indent." ");
+        $result .= $this->geometry->toXml($indent." ");
+        $result .= $indent."</ASP>\n";
+
+        return $result;
+    }
+
+    /**
+     * Simple geometry validation.
+     */
+    public function validateGeometry(&$errors, &$warnings)
+    {
+        // check that we have a valid number of polygon nodes (min 4 => 3 + end point which is the same as start point)
+        if (!$this->geometry->hasValidNodeCount()) {
+            $errors .= sprintf(
+                "ERROR: Airspace %s has invalid number of points: %s\n",
+                $this->name,
+                $this->geometry->getGeoElementsCount());
+        }
     }
 }

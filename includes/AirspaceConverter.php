@@ -16,6 +16,10 @@ require_once 'Airspace.php';
 class AirspaceConverter
 {
     /**
+     * @var array
+     */
+    public $airspaces;
+    /**
      * @var string
      */
     public $errors;
@@ -24,9 +28,25 @@ class AirspaceConverter
      */
     public $warnings;
     /**
-     * @var array
+     * @var int
      */
-    public $airspaces;
+    private $fileAcCount;
+    /**
+     * @var float
+     */
+    private $maxLat;
+    /**
+     * @var float
+     */
+    private $maxLon;
+    /**
+     * @var float
+     */
+    private $minLat;
+    /**
+     * @var float
+     */
+    private $minLon;
     /**
      * @var string
      */
@@ -35,22 +55,6 @@ class AirspaceConverter
      * @var string
      */
     private $srcString;
-    /**
-     * @var float
-     */
-    private $maxLat;
-    /**
-     * @var float
-     */
-    private $minLat;
-    /**
-     * @var float
-     */
-    private $maxLon;
-    /**
-     * @var float
-     */
-    private $minLon;
 
     /**
      * Construct.
@@ -66,6 +70,7 @@ class AirspaceConverter
         $this->maxLon = 180.0;
         $this->minLon = -180.0;
         $this->airspaces = [];
+        $this->fileAcCount = 0;
     }
 
     /**
@@ -74,6 +79,25 @@ class AirspaceConverter
     public function __destruct()
     {
         unset($this->airspaces);
+    }
+
+    /**
+     * @param $radius
+     *
+     * @return float
+     */
+    public function arcRes($radius)
+    {
+        // max error on arc in nm
+        $maxError = 0.005;
+        $minArcRes = 0.2;
+        $res = (2.0 * acos(($radius - $maxError) / $radius));
+
+        if (($res < $minArcRes) && ($res > 0.0)) {
+            return $res;
+        } else {
+            return $minArcRes;
+        }
     }
 
     /**
@@ -92,6 +116,16 @@ class AirspaceConverter
         $this->minLat = -90.0;
         $this->maxLon = 180.0;
         $this->minLon = -180.0;
+
+        // count number of AC definitions in file
+        if (!preg_match_all('/AC\s+[a-z]+/i', file_get_contents($srcPath), $matches)) {
+            $this->errors = "No airspace definitions found in file.\n";
+
+            return null;
+        };
+        // set found count of found airspace definitions
+        $this->fileAcCount = count($matches[0]);
+        echo sprintf("Found %s airspace definitions in input file.\n", $this->fileAcCount);
 
         // open input file
         $handle = fopen($srcPath, "r");
@@ -131,25 +165,6 @@ class AirspaceConverter
     }
 
     /**
-     * @param $radius
-     *
-     * @return float
-     */
-    public function arcRes($radius)
-    {
-        // max error on arc in nm
-        $maxError = 0.005;
-        $minArcRes = 0.2;
-        $res = (2.0 * acos(($radius - $maxError) / $radius));
-
-        if (($res < $minArcRes) && ($res > 0.0)) {
-            return $res;
-        } else {
-            return $minArcRes;
-        }
-    }
-
-    /**
      * @param $destPath
      * @param $outputFormat
      * @param $version
@@ -158,6 +173,16 @@ class AirspaceConverter
      */
     public function writeToFile($destPath, $outputFormat, $version)
     {
+        // check that parsed airspace count is the same as the found airspace definitions in the input file
+        if (count($this->airspaces) !== $this->fileAcCount) {
+            $this->errors .= sprintf(
+                "ERROR: Parsed airspace count %s differs from found airspace definition count %s.\n",
+                count($this->airspaces),
+                $this->fileAcCount
+            );
+        }
+        echo sprintf("Writing %s airspaces to output file.\n", count($this->airspaces));
+
         // write result to file
         $outHandle = fopen($destPath, 'w');
         if ($outHandle) {
@@ -264,91 +289,6 @@ class AirspaceConverter
     }
 
     /**
-     * @param $asp
-     * @param $currentPath
-     * @param $pathIsAirway
-     * @param $airwayWidth
-     * @param $np
-     */
-    private function updateAspPath($asp, $currentPath, $pathIsAirway, $airwayWidth, $np)
-    {
-        // handle paths, containing only two points (e.g. french 'axes' airspaces) as airways
-        if ($np == 2)
-        {
-            $pathIsAirway = true;
-            $airwayWidth = 0.01; // 0.01nm
-        }
-
-        if ($pathIsAirway == true) {
-            $airway = new AipPath(); // "left border"
-            $rightPath = new AipPath(); // "right border"
-
-            $startPoint = $currentPath->pathElements[0];
-
-            for ($idx = 1; $idx < $np; $idx++) {
-                $point = $currentPath->pathElements[$idx];
-                $brg = $startPoint->bearingTo($point);
-
-                // if this is the first iteration init last brg
-                if ($idx == 1) {
-                    $lastBrg = $brg;
-                }
-
-                $angle = ($lastBrg + $brg) * 0.5;
-
-                $alpha = abs($angle - $brg);
-                $radius = ($airwayWidth * 0.5) / cos($alpha);
-
-                $leftPoint = $startPoint->pointInDirectionAndDistance($angle - 0.5 * M_PI, $radius);
-                $airway->appendPoint($leftPoint);
-                $rightPoint = $startPoint->pointInDirectionAndDistance($angle + 0.5 * M_PI, $radius);
-                $rightPath->appendPoint($rightPoint);
-
-                $lastBrg = $brg;
-                $startPoint = $point;
-
-                // last iteration
-                if ($idx == ($np - 1)) {
-                    // if first point and last point are identical, close airway
-                    if (($currentPath->pathElements[0]->lat == $point->lat) &&
-                        ($currentPath->pathElements[0]->lon == $point->lon)
-                    ) {
-                        $point = $currentPath->pathElements[1];
-                        $brg = $startPoint->bearingTo($point);
-                        $angle = ($lastBrg + $brg) * 0.5;
-
-                        $alpha = abs($angle - $brg);
-                        $radius = ($airwayWidth * 0.5) / cos($alpha);
-
-                        $leftPoint = $startPoint->pointInDirectionAndDistance($angle - 0.5 * M_PI, $radius);
-                        $airway->appendPoint($leftPoint);
-                        $rightPoint = $startPoint->pointInDirectionAndDistance($angle + 0.5 * M_PI, $radius);
-                        $rightPath->appendPoint($rightPoint);
-
-                        $airway->pathElements[0] = $leftPoint;
-                        $rightPath->pathElements[0] = $rightPoint;
-                    } else {
-                        $leftPoint = $point->pointInDirectionAndDistance($brg - 0.5 * M_PI, $airwayWidth * 0.5);
-                        $airway->appendPoint($leftPoint);
-                        $rightPoint = $point->pointInDirectionAndDistance($brg + 0.5 * M_PI, $airwayWidth * 0.5);
-                        $rightPath->appendPoint($rightPoint);
-                    }
-                }
-            }
-
-            // concat paths opposite site in reverse order..
-            for ($idx = $np - 1; $idx >= 0; $idx--) {
-                $airway->appendPoint($rightPath->pathElements[$idx]);
-            }
-            $airway->closePath();
-            $asp->setPath($airway);
-        } else {
-            $currentPath->closePath();
-            $asp->setPath($currentPath);
-        }
-    }
-
-    /**
      * @param $latdeg
      * @param $latmin
      * @param $latsec
@@ -382,43 +322,6 @@ class AirspaceConverter
         }
 
         return $result;
-    }
-
-    /**
-     * @param $dpLine
-     *
-     * @return AipPoint|bool
-     */
-    private function parseCoordPair($dpLine)
-    {
-        $n = sscanf($dpLine, "%f:%f:%f %c %f:%f:%f %c",
-            $latdeg, $latmin, $latsec, $latvz,
-            $londeg, $lonmin, $lonsec, $lonvz
-        );
-
-        if ($n == 8) {
-            return $this->createAipPoint($latdeg, $latmin, $latsec, $latvz, $londeg, $lonmin, $lonsec, $lonvz);
-        } else {
-            $n = sscanf($dpLine, "%f:%f %c %f:%f %c",
-                $latdeg, $latmin, $latvz,
-                $londeg, $lonmin, $lonvz
-            );
-
-            if ($n == 6) {
-                return $this->createAipPoint($latdeg, $latmin, 0.0, $latvz, $londeg, $lonmin, 0.0, $lonvz);
-            } else {
-                $n = sscanf($dpLine, "%2f%2f%f%c %3f%2f%f%c",
-                    $latdeg, $latmin, $latsec, $latvz,
-                    $londeg, $lonmin, $lonsec, $lonvz
-                );
-
-                if ($n == 8) {
-                    return $this->createAipPoint($latdeg, $latmin, $latsec, $latvz, $londeg, $lonmin, $lonsec, $lonvz);
-                }
-            }
-        }
-
-        return false;
     }
 
     /**
@@ -528,6 +431,9 @@ class AirspaceConverter
                     $line = str_replace("  ", " ", $line);
                     $line = str_replace("  ", " ", $line);
                     $line = str_replace(" ,", ",", $line);
+                    // remove unwanted characters
+                    $line = str_replace("&", " and ", $line);
+                    $line = str_replace("'", "", $line);
 
                     // check if next asp has started
                     $nextAsp = false;
@@ -663,7 +569,7 @@ class AirspaceConverter
                                 $asp->category = "RMZ";
                             }
 
-                            // if category is not unknown
+                            // if category is unknown
                             if (strcmp($asp->category, "UNKNOWN")) {
                                 $asp->name = $name;
                             } else {
@@ -684,8 +590,7 @@ class AirspaceConverter
                                     $limit->altString = 999;
 
                                     echo "Using FL999 for 'unlimited' ceiling in airspace $asp->name.\n";
-                                }
-                                // parse alt limit
+                                } // parse alt limit
                                 elseif (strpos($str, "FL") !== false) {
 
                                     // "FL195xxx", "FL 195xxx"
@@ -972,10 +877,16 @@ class AirspaceConverter
                 // last asp wasn't added
                 if ($np > 0) {
                     $this->updateAspPath($asp, $currentPath, $pathIsAirway, $airwayWidth, $np);
+                    // enforce valid airspace
+                    $valid = $asp->validateGeometry($this->errors, $this->warnings);
+                    if (!$valid) {
+                        // do not add invalid airspaces to output file
+                        return;
+                    }
                     // add current airspace to array
                     $this->airspaces[] = $asp;
 
-                    if (($np < 5) && $arcFound) {
+                    if (($np < 4) && $arcFound) {
                         $this->warnings .= "Warning: ".$asp->name." contains only ".$np." points\n";
                     }
                 }
@@ -990,5 +901,126 @@ class AirspaceConverter
         }
 
         return false;
+    }
+
+    /**
+     * @param $dpLine
+     *
+     * @return AipPoint|bool
+     */
+    private function parseCoordPair($dpLine)
+    {
+        $n = sscanf($dpLine, "%f:%f:%f %c %f:%f:%f %c",
+            $latdeg, $latmin, $latsec, $latvz,
+            $londeg, $lonmin, $lonsec, $lonvz
+        );
+
+        if ($n == 8) {
+            return $this->createAipPoint($latdeg, $latmin, $latsec, $latvz, $londeg, $lonmin, $lonsec, $lonvz);
+        } else {
+            $n = sscanf($dpLine, "%f:%f %c %f:%f %c",
+                $latdeg, $latmin, $latvz,
+                $londeg, $lonmin, $lonvz
+            );
+
+            if ($n == 6) {
+                return $this->createAipPoint($latdeg, $latmin, 0.0, $latvz, $londeg, $lonmin, 0.0, $lonvz);
+            } else {
+                $n = sscanf($dpLine, "%2f%2f%f%c %3f%2f%f%c",
+                    $latdeg, $latmin, $latsec, $latvz,
+                    $londeg, $lonmin, $lonsec, $lonvz
+                );
+
+                if ($n == 8) {
+                    return $this->createAipPoint($latdeg, $latmin, $latsec, $latvz, $londeg, $lonmin, $lonsec, $lonvz);
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @param $asp
+     * @param $currentPath
+     * @param $pathIsAirway
+     * @param $airwayWidth
+     * @param $np
+     */
+    private function updateAspPath($asp, $currentPath, $pathIsAirway, $airwayWidth, $np)
+    {
+        // handle paths, containing only two points (e.g. french 'axes' airspaces) as airways
+        if ($np == 2) {
+            $pathIsAirway = true;
+            $airwayWidth = 0.01; // 0.01nm
+        }
+
+        if ($pathIsAirway == true) {
+            $airway = new AipPath(); // "left border"
+            $rightPath = new AipPath(); // "right border"
+
+            $startPoint = $currentPath->pathElements[0];
+
+            for ($idx = 1; $idx < $np; $idx++) {
+                $point = $currentPath->pathElements[$idx];
+                $brg = $startPoint->bearingTo($point);
+
+                // if this is the first iteration init last brg
+                if ($idx == 1) {
+                    $lastBrg = $brg;
+                }
+
+                $angle = ($lastBrg + $brg) * 0.5;
+
+                $alpha = abs($angle - $brg);
+                $radius = ($airwayWidth * 0.5) / cos($alpha);
+
+                $leftPoint = $startPoint->pointInDirectionAndDistance($angle - 0.5 * M_PI, $radius);
+                $airway->appendPoint($leftPoint);
+                $rightPoint = $startPoint->pointInDirectionAndDistance($angle + 0.5 * M_PI, $radius);
+                $rightPath->appendPoint($rightPoint);
+
+                $lastBrg = $brg;
+                $startPoint = $point;
+
+                // last iteration
+                if ($idx == ($np - 1)) {
+                    // if first point and last point are identical, close airway
+                    if (($currentPath->pathElements[0]->lat == $point->lat) &&
+                        ($currentPath->pathElements[0]->lon == $point->lon)
+                    ) {
+                        $point = $currentPath->pathElements[1];
+                        $brg = $startPoint->bearingTo($point);
+                        $angle = ($lastBrg + $brg) * 0.5;
+
+                        $alpha = abs($angle - $brg);
+                        $radius = ($airwayWidth * 0.5) / cos($alpha);
+
+                        $leftPoint = $startPoint->pointInDirectionAndDistance($angle - 0.5 * M_PI, $radius);
+                        $airway->appendPoint($leftPoint);
+                        $rightPoint = $startPoint->pointInDirectionAndDistance($angle + 0.5 * M_PI, $radius);
+                        $rightPath->appendPoint($rightPoint);
+
+                        $airway->pathElements[0] = $leftPoint;
+                        $rightPath->pathElements[0] = $rightPoint;
+                    } else {
+                        $leftPoint = $point->pointInDirectionAndDistance($brg - 0.5 * M_PI, $airwayWidth * 0.5);
+                        $airway->appendPoint($leftPoint);
+                        $rightPoint = $point->pointInDirectionAndDistance($brg + 0.5 * M_PI, $airwayWidth * 0.5);
+                        $rightPath->appendPoint($rightPoint);
+                    }
+                }
+            }
+
+            // concat paths opposite site in reverse order..
+            for ($idx = $np - 1; $idx >= 0; $idx--) {
+                $airway->appendPoint($rightPath->pathElements[$idx]);
+            }
+            $airway->closePath();
+            $asp->setPath($airway);
+        } else {
+            $currentPath->closePath();
+            $asp->setPath($currentPath);
+        }
     }
 }

@@ -17,7 +17,7 @@ class AipGeometry
     /**
      * @var array
      */
-    private $geoElements = array();
+    private $geoElements = [];
 
     /**
      * @param $element
@@ -25,6 +25,62 @@ class AipGeometry
     public function appendElement($element)
     {
         $this->geoElements[] = $element;
+    }
+
+    public function getGeoElementsCount()
+    {
+        return count($this->geoElements);
+    }
+
+    public function hasValidNodeCount()
+    {
+        return $this->getGeoElementsCount() > 4;
+    }
+
+    /**
+     * @param $indent
+     *
+     * @return string
+     */
+    public function toGml($indent)
+    {
+        $result = $indent."<OPENAIP:geometry><gml:Polygon><gml:outerBoundaryIs><gml:LinearRing><gml:coordinates>";
+
+        foreach ($this->geoElements as $element) {
+            $result .= $element->toGml();
+        }
+
+        $result .= "</gml:coordinates></gml:LinearRing></gml:outerBoundaryIs></gml:Polygon></OPENAIP:geometry>\n";
+
+        return $result;
+    }
+
+    /**
+     * @return string
+     */
+    public function toOpenAir()
+    {
+        $result = "";
+
+        foreach ($this->geoElements as $element) {
+            $result .= $element->toOpenAir();
+        }
+
+        return $result;
+    }
+
+    /**
+     * @return string
+     */
+    public function toWkt()
+    {
+        $result = "POLYGON((";
+        foreach ($this->geoElements as $element) {
+            $result .= $element->toWkt();
+        }
+        $result .= "))";
+
+        return $result;
     }
 
     /**
@@ -51,49 +107,4 @@ class AipGeometry
 
         return $result;
     }
-
-    /**
-     * @return string
-     */
-    public function toOpenAir()
-    {
-        $result = "";
-
-        foreach ($this->geoElements as $element) {
-            $result .= $element->toOpenAir();
-        }
-
-        return $result;
-    }
-
-    /**
-     * @param $indent
-     *
-     * @return string
-     */
-    public function toGml($indent)
-    {
-        $result = $indent."<OPENAIP:geometry><gml:Polygon><gml:outerBoundaryIs><gml:LinearRing><gml:coordinates>";
-
-        foreach ($this->geoElements as $element) {
-            $result .= $element->toGml();
-        }
-
-        $result .= "</gml:coordinates></gml:LinearRing></gml:outerBoundaryIs></gml:Polygon></OPENAIP:geometry>\n";
-        return $result;
-    }
-
-    /**
-     * @return string
-     */
-    public function toWkt()
-    {
-        $result = "POLYGON((";
-        foreach ($this->geoElements as $element) {
-            $result .= $element->toWkt();
-        }
-        $result .= "))";
-        return $result;
-    }
-
 }
