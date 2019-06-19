@@ -47,6 +47,24 @@ class Airspace
     }
 
     /**
+     * Simple geometry validation.
+     */
+    public function isValidGeometry(&$errors, &$warnings)
+    {
+        // check that we have a valid number of polygon nodes (min 4 => 3 + end point which is the same as start point)
+        if (!$this->geometry->hasValidNodeCount()) {
+            $errors .= sprintf(
+                "ERROR: Airspace %s has invalid number of points: %s\n",
+                $this->name,
+                $this->geometry->getGeoElementsCount());
+
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
      * @param $path
      */
     public function setPath($path)
@@ -218,19 +236,5 @@ class Airspace
         $result .= $indent."</ASP>\n";
 
         return $result;
-    }
-
-    /**
-     * Simple geometry validation.
-     */
-    public function validateGeometry(&$errors, &$warnings)
-    {
-        // check that we have a valid number of polygon nodes (min 4 => 3 + end point which is the same as start point)
-        if (!$this->geometry->hasValidNodeCount()) {
-            $errors .= sprintf(
-                "ERROR: Airspace %s has invalid number of points: %s\n",
-                $this->name,
-                $this->geometry->getGeoElementsCount());
-        }
     }
 }

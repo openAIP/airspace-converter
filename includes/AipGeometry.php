@@ -27,14 +27,19 @@ class AipGeometry
         $this->geoElements[] = $element;
     }
 
-    public function getGeoElementsCount()
-    {
-        return count($this->geoElements);
-    }
-
+    /**
+     * @return bool
+     */
     public function hasValidNodeCount()
     {
-        return $this->getGeoElementsCount() > 4;
+        foreach ($this->geoElements as $path) {
+            /** @var AipPath $path */
+            if ($path->getElementCount() < 4) {
+                return false;
+            };
+        }
+
+        return true;
     }
 
     /**

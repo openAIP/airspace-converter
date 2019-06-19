@@ -32,6 +32,10 @@ class AirspaceConverter
      */
     private $fileAcCount;
     /**
+     * @var array
+     */
+    private $fileTitles;
+    /**
      * @var float
      */
     private $maxLat;
@@ -47,6 +51,10 @@ class AirspaceConverter
      * @var float
      */
     private $minLon;
+    /**
+     * @var array
+     */
+    private $processedTitles;
     /**
      * @var string
      */
@@ -71,6 +79,8 @@ class AirspaceConverter
         $this->minLon = -180.0;
         $this->airspaces = [];
         $this->fileAcCount = 0;
+        $this->fileTitles = [];
+        $this->processedTitles = [];
     }
 
     /**
@@ -118,14 +128,20 @@ class AirspaceConverter
         $this->minLon = -180.0;
 
         // count number of AC definitions in file
-        if (!preg_match_all('/AC\s+[a-z]+/i', file_get_contents($srcPath), $matches)) {
+        $filecontent = file_get_contents($srcPath);
+        if (!preg_match_all('/AC\s+[a-z]+/i', $filecontent, $aspdefs)) {
             $this->errors = "No airspace definitions found in file.\n";
 
             return null;
         };
-        // set found count of found airspace definitions
-        $this->fileAcCount = count($matches[0]);
+        // set count of found airspace definitions
+        $this->fileAcCount = count($aspdefs[0]);
         echo sprintf("Found %s airspace definitions in input file.\n", $this->fileAcCount);
+
+        // extract all titles to later compare written airspaces to found definitions in file which allows
+        // for easier debugging of erroneous file
+        preg_match_all("/^AN\s+(?'title'.*)$/i", $filecontent, $aspTitles);
+        $this->fileTitles = $aspTitles['title'];
 
         // open input file
         $handle = fopen($srcPath, "r");
@@ -175,13 +191,15 @@ class AirspaceConverter
     {
         // check that parsed airspace count is the same as the found airspace definitions in the input file
         if (count($this->airspaces) !== $this->fileAcCount) {
-            $this->errors .= sprintf(
+            echo sprintf(
                 "ERROR: Parsed airspace count %s differs from found airspace definition count %s.\n",
                 count($this->airspaces),
                 $this->fileAcCount
             );
+        } else {
+            echo sprintf("Writing %s airspaces to output file.\n", count($this->airspaces));
         }
-        echo sprintf("Writing %s airspaces to output file.\n", count($this->airspaces));
+
 
         // write result to file
         $outHandle = fopen($destPath, 'w');
@@ -268,10 +286,20 @@ class AirspaceConverter
 
                         $fid = 0;
                         foreach ($this->airspaces as $asp) {
+                            /** @var Airspace $asp */
+                            // add processed airspace title
+                            $this->processedTitles[] = $asp->name;
+                            /** @var Airspace $asp */
                             fwrite($outHandle, utf8_encode($asp->toGml("  ", $fid)));
                             $fid += 1;
                         }
 
+                        $diffTitles = array_diff($this->fileTitles, $this->processedTitles);
+                        if (!empty($diffTitles)) {
+                            foreach ($diffTitles as $title) {
+                                $this->errors .= sprintf("ERROR: Airspace with title '%s' not written to file!\n", $title);
+                            }
+                        }
                         fwrite($outHandle, utf8_encode("</OPENAIP:airspaces>\n"));
 
                         fclose($outHandle);
@@ -377,6 +405,8 @@ class AirspaceConverter
 
                 // add current airspace to array
                 $this->airspaces[] = $asp;
+                // add processed airspace title
+                $this->processedTitles[] = $asp->name;
             }
 
             return true;
@@ -459,10 +489,6 @@ class AirspaceConverter
 
                     if ($writeAsp) {
                         $this->updateAspPath($asp, $currentPath, $pathIsAirway, $airwayWidth, $np);
-
-                        if (($np < 5) && $arcFound) {
-                            $this->warnings .= "Warning: ".$asp->name." contains only ".$np." points\n";
-                        }
                         $arcFound = false;
 
                         // add current airspace to array
@@ -878,10 +904,10 @@ class AirspaceConverter
                 if ($np > 0) {
                     $this->updateAspPath($asp, $currentPath, $pathIsAirway, $airwayWidth, $np);
                     // enforce valid airspace
-                    $valid = $asp->validateGeometry($this->errors, $this->warnings);
-                    if (!$valid) {
+                    $validCount = $asp->isValidGeometry($this->errors, $this->warnings);
+                    if (!$validCount) {
                         // do not add invalid airspaces to output file
-                        return;
+                        return null;
                     }
                     // add current airspace to array
                     $this->airspaces[] = $asp;

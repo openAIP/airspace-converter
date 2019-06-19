@@ -17,7 +17,7 @@ class AipPath
     /**
      * @var array
      */
-    public $pathElements = array();
+    public $pathElements = [];
 
     /**
      * @param $point
@@ -41,27 +41,24 @@ class AipPath
         }
     }
 
-    /**
-     * $indent is a string, containing whitespaces, which is
-     * prepended to each line.
-     *
-     * <PATH>
-     *  <POINT><LAT>52.1222</LAT><LON>8.31111</LON></POINT>
-     *  ...
-     * </PATH>
-     *
-     * @param $ident
-     */
-    public function toXml($indent)
+    public function getElementCount()
     {
-        $result = $indent."<PATH>\n";
+        return count($this->pathElements);
+    }
+
+    /**
+     * @return string
+     */
+    public function toGml()
+    {
+        $result = "";
         $numElements = count($this->pathElements);
-
         for ($idx = 0; $idx < $numElements; $idx++) {
-            $result .= $this->pathElements[$idx]->toXml($indent." ");
+            $result .= $this->pathElements[$idx]->lon.",".$this->pathElements[$idx]->lat;
+            if ($idx < ($numElements - 1)) {
+                $result .= " ";
+            }
         }
-
-        $result .= $indent."</PATH>\n";
 
         return $result;
     }
@@ -98,18 +95,26 @@ class AipPath
     }
 
     /**
-     * @return string
+     * $indent is a string, containing whitespaces, which is
+     * prepended to each line.
+     *
+     * <PATH>
+     *  <POINT><LAT>52.1222</LAT><LON>8.31111</LON></POINT>
+     *  ...
+     * </PATH>
+     *
+     * @param $ident
      */
-    public function toGml()
+    public function toXml($indent)
     {
-        $result = "";
+        $result = $indent."<PATH>\n";
         $numElements = count($this->pathElements);
+
         for ($idx = 0; $idx < $numElements; $idx++) {
-            $result .= $this->pathElements[$idx]->lon.",".$this->pathElements[$idx]->lat;
-            if ($idx < ($numElements - 1)) {
-                $result .= " ";
-            }
+            $result .= $this->pathElements[$idx]->toXml($indent." ");
         }
+
+        $result .= $indent."</PATH>\n";
 
         return $result;
     }
