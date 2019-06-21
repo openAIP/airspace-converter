@@ -129,7 +129,7 @@ class AirspaceConverter
 
         // count number of AC definitions in file
         $filecontent = file_get_contents($srcPath);
-        if (!preg_match_all("/^AC\s+[A-Za-z]+$/m", $filecontent, $aspdefs)) {
+        if (!preg_match_all("/^AC\s+[A-Za-z]+/m", $filecontent, $aspdefs)) {
             $this->errors = "No airspace definitions found in file. If file contains airspace definitions, this may also be a problem with wrong text encoding. Please save as UTF-8 and try again.\n";
 
             return null;
@@ -140,8 +140,10 @@ class AirspaceConverter
 
         // extract all titles to later compare written airspaces to found definitions in file which allows
         // for easier debugging of erroneous file
-        preg_match_all("/^AN\s+(?'title'.*)$/m", $filecontent, $aspTitles);
-        $this->fileTitles = $aspTitles['title'];
+        preg_match_all("/^AN\s+(?'title'.*)/m", $filecontent, $aspTitles);
+        foreach ($aspTitles['title'] as $aspTitle) {
+            $this->fileTitles[] = $this->trimString($aspTitle);
+        }
 
         // open input file
         $handle = fopen($srcPath, "r");
@@ -288,7 +290,7 @@ class AirspaceConverter
                         foreach ($this->airspaces as $asp) {
                             /** @var Airspace $asp */
                             // add processed airspace title
-                            $this->processedTitles[] = $asp->name;
+                            $this->processedTitles[] = $this->trimString($asp->name);
                             /** @var Airspace $asp */
                             fwrite($outHandle, utf8_encode($asp->toGml("  ", $fid)));
                             $fid += 1;
@@ -457,17 +459,8 @@ class AirspaceConverter
                         continue;
                     }
 
-                    // remove all unnecessary spaces..
-                    // maybe there is a better way to do this..
-                    $line = trim($line);
-                    $line = str_replace("  ", " ", $line);
-                    $line = str_replace("  ", " ", $line);
-                    $line = str_replace("  ", " ", $line);
-                    $line = str_replace("  ", " ", $line);
-                    $line = str_replace(" ,", ",", $line);
-                    // remove unwanted characters
-                    $line = str_replace("&", " and ", $line);
-                    $line = str_replace("'", "", $line);
+                    // trim string and strip unwanted chars
+                    $line = $this->trimString($line);
 
                     // check if next asp has started
                     $nextAsp = false;
@@ -969,6 +962,22 @@ class AirspaceConverter
         }
 
         return false;
+    }
+
+    private function trimString($string)
+    {
+        $string = trim($string);
+        $string = preg_replace('/\s{2,}/', " ", $string);
+//                    $line = str_replace("  ", " ", $line);
+//                    $line = str_replace("  ", " ", $line);
+//                    $line = str_replace("  ", " ", $line);
+//                    $line = str_replace("  ", " ", $line);
+        $string = str_replace(" ,", ",", $string);
+        // remove unwanted characters
+        $string = str_replace("&", " and ", $string);
+        $string = str_replace("'", "", $string);
+
+        return $string;
     }
 
     /**
