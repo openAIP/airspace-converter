@@ -129,14 +129,15 @@ class AirspaceConverter
 
         // count number of AC definitions in file
         $filecontent = file_get_contents($srcPath);
+
         if ($srcFormat === "OPENAIR") {
-            if (!preg_match_all("/^AC\s+[A-Za-z]+/m", $filecontent, $aspdefs)) {
+            if (!preg_match_all("/^AC\s+[A-Za-z]+/gm", $filecontent, $aspdefs)) {
                 $this->errors = "No airspace definitions found in file. If file contains airspace definitions, this may also be a problem with wrong text encoding. Please save as UTF-8 and try again.\n";
 
                 return null;
             };
         } elseif ($srcFormat === "OPENAIP") {
-            if (!preg_match_all("/^<ASP\s+CATEGORY=.*>/m", $filecontent, $aspdefs)) {
+            if (!preg_match_all("/<ASP\s+CATEGORY=.*>/m", $filecontent, $aspdefs)) {
                 $this->errors = "No airspace definitions found in file. If file contains airspace definitions, this may also be a problem with wrong text encoding. Please save as UTF-8 and try again.\n";
 
                 return null;
