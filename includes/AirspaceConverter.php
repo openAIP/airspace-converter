@@ -131,7 +131,7 @@ class AirspaceConverter
         $filecontent = file_get_contents($srcPath);
 
         if ($srcFormat === "OPENAIR") {
-            if (!preg_match_all("/^AC\s+[A-Za-z]+/gm", $filecontent, $aspdefs)) {
+            if (!preg_match_all("/^AC\s+[A-Za-z]+/m", $filecontent, $aspdefs)) {
                 $this->errors = "No airspace definitions found in file. If file contains airspace definitions, this may also be a problem with wrong text encoding. Please save as UTF-8 and try again.\n";
 
                 return null;
@@ -260,7 +260,8 @@ class AirspaceConverter
                     utf8_encode("*  **********************************************************************************************\n\n"));
 
                 foreach ($this->airspaces as $asp) {
-                    fwrite($outHandle, utf8_encode($asp->toOpenAir()));
+                    // IMPORTANT do not use utf8_encoding here => sourced file MUST be in UTF-8 encoding
+                    fwrite($outHandle, $asp->toOpenAir());
                     fwrite($outHandle, utf8_encode("\n"));
                 }
 
