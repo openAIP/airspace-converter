@@ -129,18 +129,20 @@ class AirspaceConverter
 
         // count number of AC definitions in file
         $filecontent = file_get_contents($srcPath);
-        if ($srcFormat=== "OPENAIR") {
+        if ($srcFormat === "OPENAIR") {
             if (!preg_match_all("/^AC\s+[A-Za-z]+/m", $filecontent, $aspdefs)) {
                 $this->errors = "No airspace definitions found in file. If file contains airspace definitions, this may also be a problem with wrong text encoding. Please save as UTF-8 and try again.\n";
 
                 return null;
             };
-        } elseif ($srcFormat=== "OPENAIP") {
+        } elseif ($srcFormat === "OPENAIP") {
             if (!preg_match_all("/^<ASP\s+CATEGORY=.*>/m", $filecontent, $aspdefs)) {
                 $this->errors = "No airspace definitions found in file. If file contains airspace definitions, this may also be a problem with wrong text encoding. Please save as UTF-8 and try again.\n";
 
                 return null;
             };
+        } else {
+            throw new RuntimeException(sprintf("Unknown input format %s", $srcFormat));
         }
 
         // set count of found airspace definitions
@@ -301,7 +303,8 @@ class AirspaceConverter
                             // add processed airspace title
                             $this->processedTitles[] = $this->trimString($asp->name);
                             /** @var Airspace $asp */
-                            fwrite($outHandle, utf8_encode($asp->toGml("  ", $fid)));
+                            // IMPORTANT DO NOT USE UTF8_ENCODE => SOURCED FILE MUST ALWAYS BE UTF-8 ENCODED
+                            fwrite($outHandle, $asp->toGml("  ", $fid));
                             $fid += 1;
                         }
 
